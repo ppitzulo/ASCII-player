@@ -1,8 +1,8 @@
 extern "C" {
-#include <libavcodec/avcodec.h>
-#include <libavformat/avformat.h>
-#include <libswscale/swscale.h>
-#include <libavutil/avconfig.h>
+    #include <libavcodec/avcodec.h>
+    #include <libavformat/avformat.h>
+    #include <libswscale/swscale.h>
+    #include <libavutil/avconfig.h>
 }
 #include <iostream>
 #include <stdlib.h>
@@ -18,8 +18,8 @@ using namespace std;
 
 void frame2Ascii(AVFrame *pFrame) {
     char greyscale_ramp[] = " .'`^\",:;Il!i><~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$";
-    const int WIDTH = 6;//4;//6;
-    const int HEIGHT = 12;//8;//12;
+    const int WIDTH = 6;
+    const int HEIGHT = 12;
     int offset = 0;
     string str = "";
 
@@ -31,7 +31,6 @@ void frame2Ascii(AVFrame *pFrame) {
                 str += " ";
             } else if (offset >= 16 && offset <= 235) {
                 str += greyscale_ramp[(offset - 16) * 23/73];
-
             } else {
                 str += "$";
             }
@@ -65,7 +64,7 @@ int main(int argc, const char *argv[])
         return -1;
     }
     system("setterm -cursor off");
-    AVCodec *pCodec = NULL;
+    const AVCodec *pCodec = NULL;
     AVCodecParameters *pCodecParameters = NULL;
     int video_stream_index = -1;
 
@@ -73,7 +72,7 @@ int main(int argc, const char *argv[])
     for (int i = 0; i < pFormatContext->nb_streams; i++) {
         AVCodecParameters *pLocalCodecParameters = NULL;
         pLocalCodecParameters = pFormatContext->streams[i]->codecpar;
-        AVCodec *pLocalCodec = NULL;
+        const AVCodec *pLocalCodec = NULL;
 
         // finds the registered decoder for a codec ID
         pLocalCodec = avcodec_find_decoder(pLocalCodecParameters->codec_id);
@@ -91,9 +90,6 @@ int main(int argc, const char *argv[])
             }
 
         }
-        // else if (pLocalCodecParameters->codec_type == AVMEDIA_TYPE_AUDIO) {
-
-        // }
     }
 
 
@@ -149,10 +145,8 @@ int main(int argc, const char *argv[])
             response = avcodec_send_packet(pCodecContext, pPacket);
             response = avcodec_receive_frame(pCodecContext, pFrame);
             if (response == AVERROR(EAGAIN) || response == AVERROR_EOF) {
-//                cout << "test" << endl;
                 break;
             } else if (response < 0) {
-//                cout << "Error while receiving frame from decoder: " << av_err2str(response) << endl;
                 return response;
             }
             if (!playing_music) {
@@ -161,7 +155,6 @@ int main(int argc, const char *argv[])
             }
             frame2Ascii(pFrame);
             usleep(32000);
-//            nanosleep(&time, &time2);
         }
         av_packet_unref(pPacket);
     }
