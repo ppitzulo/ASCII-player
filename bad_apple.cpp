@@ -7,29 +7,36 @@ extern "C" {
 #include <iostream>
 #include <stdlib.h>
 #include <unistd.h>
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_mixer.h>
+#include <time.h>
+#include <list>
+
+static const char *badapplemp3 = "bad_apple.mp3";
 
 using namespace std;
-// using namespace cv;
 
-
-int frame2Ascii(AVPacket *pPacket, AVCodecContext *pCodecContext, AVFrame *pFrame) {
-    const char greyscale_ramp[] = " .'`^\",:;Il!i><~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$";
-    const int WIDTH = 2;
-    const int HEIGHT = 4;
+void frame2Ascii(AVFrame *pFrame) {
+    char greyscale_ramp[] = " .'`^\",:;Il!i><~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$";
+    const int WIDTH = 6;//4;//6;
+    const int HEIGHT = 12;//8;//12;
     int offset = 0;
+    string str = "";
 
     for (int x = 0; x < pFrame->height; x += HEIGHT) {
+        str = "";
         for (int y = 0; y < pFrame->width; y += WIDTH) {
             offset = pFrame->data[0][y + x * pFrame->linesize[0]];
             if (offset < 16) {
-                cout << " ";
+                str += " ";
             } else if (offset >= 16 && offset <= 235) {
-                cout << greyscale_ramp[(offset - 16) * 69 / 219];
+                str += greyscale_ramp[(offset - 16) * 23/73];
+
             } else {
-                cout << "$";
+                str += "$";
             }
         }
-        cout << "\n";
+        cout << str << '\n';
     }
 }
 
@@ -57,7 +64,7 @@ int main(int argc, const char *argv[])
         cout << "ERROR could not get the stream info" << endl;
         return -1;
     }
-
+    system("setterm -cursor off");
     AVCodec *pCodec = NULL;
     AVCodecParameters *pCodecParameters = NULL;
     int video_stream_index = -1;
@@ -118,20 +125,43 @@ int main(int argc, const char *argv[])
     int response = 0;
     int how_many_packets_to_process = 8;
 
+
+    int result = 0;
+    int flags = MIX_INIT_MP3;
+    if (SDL_Init(SDL_INIT_AUDIO) < 0) {
+        printf("Failed to init SDL\n");
+        exit(1);
+    }
+    if (flags != (result = Mix_Init(flags))) {
+        printf("Could not initialize mixer (result: %d).\n", result);
+        printf("Mix_Init: %s\n", Mix_GetError());
+        exit(1);
+    }
+    struct timespec time, time2;
+    time.tv_sec = 0;
+    time.tv_nsec = 33333300;
+    Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 4096);
+    Mix_Music *music = Mix_LoadMUS(badapplemp3);
+    int playing_music = 0;
     while (av_read_frame(pFormatContext, pPacket) >= 0) {
         // if it's the video stream
         if (pPacket->stream_index == video_stream_index) {
             response = avcodec_send_packet(pCodecContext, pPacket);
             response = avcodec_receive_frame(pCodecContext, pFrame);
             if (response == AVERROR(EAGAIN) || response == AVERROR_EOF) {
-                cout << "test";
+//                cout << "test" << endl;
                 break;
             } else if (response < 0) {
 //                cout << "Error while receiving frame from decoder: " << av_err2str(response) << endl;
                 return response;
             }
-            response = frame2Ascii(pPacket, pCodecContext, pFrame);
-            usleep(30000);
+            if (!playing_music) {
+                Mix_PlayMusic(music, 1);
+                playing_music = 1;
+            }
+            frame2Ascii(pFrame);
+            usleep(32000);
+//            nanosleep(&time, &time2);
         }
         av_packet_unref(pPacket);
     }
@@ -140,5 +170,6 @@ int main(int argc, const char *argv[])
     av_packet_free(&pPacket);
     av_frame_free(&pFrame);
     avcodec_free_context(&pCodecContext);
+    system("setterm -cursor on");
     return 0;
 }
